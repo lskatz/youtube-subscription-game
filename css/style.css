@@ -323,3 +323,197 @@ body {
   .game-layout { grid-template-columns: 1fr; height: auto; }
   .panel { min-height: auto; }
 }
+
+/* ===== Video Preview Player ===== */
+.preview-player {
+  background: #000;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  margin-bottom: 14px;
+}
+
+#player-canvas {
+  width: 100%;
+  height: 160px;
+  display: block;
+}
+
+.player-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  background: #111;
+}
+
+/* --- Play / Pause button tiers --- */
+.play-pause-btn {
+  width: 36px; height: 36px;
+  border: none; border-radius: 50%;
+  cursor: pointer; font-size: 13px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  transition: transform 0.1s;
+}
+.play-pause-btn:active { transform: scale(0.88); }
+
+/* Tier 0 — Basic (0 subs) */
+.play-pause-btn.tier-0 {
+  background: #555; color: #bbb;
+}
+/* Tier 1 — Polished (1K) */
+.play-pause-btn.tier-1 {
+  background: #222; color: #fff;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.7);
+}
+/* Tier 2 — Silver (10K) */
+.play-pause-btn.tier-2 {
+  background: linear-gradient(135deg, #9e9e9e, #e0e0e0, #757575);
+  color: #111;
+  box-shadow: 0 2px 10px rgba(200,200,200,0.4);
+}
+/* Tier 3 — Gold (100K) */
+.play-pause-btn.tier-3 {
+  background: linear-gradient(135deg, #b8860b, #ffd700, #b8860b);
+  color: #111;
+  box-shadow: 0 2px 14px rgba(255,215,0,0.55);
+}
+/* Tier 4 — Crystal/Purple (1M) */
+.play-pause-btn.tier-4 {
+  background: linear-gradient(135deg, #6a0dad, #c084fc, #6a0dad);
+  color: #fff;
+  box-shadow: 0 2px 18px rgba(168,85,247,0.65);
+}
+/* Tier 5 — Diamond (10M) */
+.play-pause-btn.tier-5 {
+  background: linear-gradient(135deg, #0369a1, #38bdf8, #0369a1);
+  color: #fff;
+  animation: diamond-pulse 2s ease-in-out infinite;
+}
+/* Tier 6 — Holographic (50M) */
+.play-pause-btn.tier-6 {
+  background: linear-gradient(135deg, #ff0080, #ff8c00, #40e0d0, #7b2fff, #ff0080);
+  background-size: 300% 300%;
+  color: #fff;
+  animation: holo-shift 2s linear infinite;
+  box-shadow: 0 4px 22px rgba(255,0,128,0.5);
+}
+/* Tier 7 — Legendary (500M) */
+.play-pause-btn.tier-7 {
+  background: linear-gradient(135deg, #7c2d12, #fbbf24, #fef08a, #fbbf24, #7c2d12);
+  color: #111;
+  animation: legendary-glow 1.5s ease-in-out infinite;
+}
+
+@keyframes diamond-pulse {
+  0%, 100% { box-shadow: 0 0 14px rgba(56,189,248,0.7); }
+  50%       { box-shadow: 0 0 28px rgba(56,189,248,1.0); }
+}
+@keyframes holo-shift {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+@keyframes legendary-glow {
+  0%, 100% { box-shadow: 0 4px 20px rgba(251,191,36,0.8); transform: scale(1); }
+  50%       { box-shadow: 0 6px 40px rgba(251,191,36,1), 0 0 50px rgba(251,191,36,0.3); transform: scale(1.07); }
+}
+
+/* Progress bar */
+.player-progress-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.player-progress-track {
+  height: 5px;
+  background: #333;
+  border-radius: 3px;
+  cursor: pointer;
+  overflow: hidden;
+}
+.player-progress-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 3px;
+  width: 0%;
+  transition: width 0.5s linear;
+}
+.player-time { font-size: 10px; color: var(--text-dim); }
+
+/* Volume */
+.player-vol { display: flex; align-items: center; gap: 4px; font-size: 13px; }
+#vol-slider  { width: 56px; accent-color: var(--accent); }
+
+/* Video title strip */
+.player-video-title {
+  padding: 5px 10px;
+  font-size: 11px;
+  color: var(--text-dim);
+  background: #0a0a0a;
+  border-top: 1px solid #1c1c1c;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ===== Creator Leaderboard ===== */
+.creator-rivals {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  margin-bottom: 14px;
+}
+.rivals-title {
+  font-size: 11px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--text-dim); margin-bottom: 8px;
+}
+.rival-row {
+  padding: 5px 0;
+  border-bottom: 1px solid var(--border);
+  transition: opacity 0.3s;
+}
+.rival-row:last-child { border-bottom: none; }
+.rival-row.surpassed  { opacity: 0.45; }
+
+.rival-info {
+  display: flex; align-items: center; gap: 6px;
+  margin-bottom: 3px;
+}
+.rival-icon  { font-size: 13px; }
+.rival-name  { flex: 1; font-size: 12px; font-weight: 600; }
+.rival-subs  { font-size: 11px; color: var(--text-dim); }
+.rival-check { color: var(--green); font-weight: 700; font-size: 12px; }
+
+.rival-progress {
+  height: 3px; background: var(--border); border-radius: 2px;
+}
+.rival-progress-fill {
+  height: 100%; background: var(--accent);
+  border-radius: 2px; max-width: 100%;
+  transition: width 0.4s ease;
+}
+.rival-progress-fill.done { background: var(--green); }
+
+/* Creator surpass toast */
+.creator-surpass-toast {
+  background: var(--accent2) !important;
+  color: #111 !important;
+}
+
+/* ===== Footer ===== */
+.site-footer {
+  text-align: center;
+  padding: 10px 16px;
+  font-size: 12px;
+  color: var(--text-dim);
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+}
+.site-footer a { color: var(--accent2); text-decoration: none; }
+.site-footer a:hover { text-decoration: underline; }
+.footer-sep { margin: 0 6px; }

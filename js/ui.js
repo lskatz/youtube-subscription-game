@@ -6,6 +6,59 @@
 
 const SAVE_KEY = "subrush_save";
 
+// ---- Famous creator analogs (static, never change) ---------
+// Parody names — not affiliated with any real creator.
+const FAMOUS_CREATORS = [
+  { name:"Linus Tech Trips",  subs:16_500_000,  icon:"💻", niche:"Technology" },
+  { name:"Shinobistream",     subs:19_000_000,  icon:"🎮", niche:"Gaming" },
+  { name:"Zeck Films",        subs:20_000_000,  icon:"🎭", niche:"Humor" },
+  { name:"GreenSepticeye",    subs:31_000_000,  icon:"🎮", niche:"Gaming" },
+  { name:"Markiplenty",       subs:36_500_000,  icon:"🎮", niche:"Gaming" },
+  { name:"PewPieDee",         subs:111_000_000, icon:"🎮", niche:"Gaming" },
+  { name:"CucaMelon",         subs:175_000_000, icon:"🎵", niche:"Kids" },
+  { name:"D-Series",          subs:285_000_000, icon:"🎵", niche:"Music" },
+  { name:"Mr. Least",         subs:345_000_000, icon:"💰", niche:"Challenge" },
+];
+
+// ---- Play button visual tier thresholds --------------------
+const PLAY_BTN_TIERS = [
+  { threshold:500_000_000, tier:7, title:"Legendary" },
+  { threshold:50_000_000,  tier:6, title:"Holographic" },
+  { threshold:10_000_000,  tier:5, title:"Diamond" },
+  { threshold:1_000_000,   tier:4, title:"Crystal" },
+  { threshold:100_000,     tier:3, title:"Gold" },
+  { threshold:10_000,      tier:2, title:"Silver" },
+  { threshold:1_000,       tier:1, title:"Polished" },
+  { threshold:0,           tier:0, title:"Basic" },
+];
+
+// ---- Niche colors for video player canvas ------------------
+const NICHE_COLORS = {
+  gaming:      { bg:"#0d1b4b", accent:"#4a90d9" },
+  science:     { bg:"#0d2b1a", accent:"#4caf50" },
+  government:  { bg:"#2b0d0d", accent:"#ef5350" },
+  humor:       { bg:"#2b1a0d", accent:"#ff9800" },
+  theoretical: { bg:"#1a0d2b", accent:"#ab47bc" },
+  cooking:     { bg:"#2b150d", accent:"#ff7043" },
+  finance:     { bg:"#0d1f2b", accent:"#29b6f6" },
+  fitness:     { bg:"#0d2b25", accent:"#26a69a" },
+  technology:  { bg:"#0d1a2b", accent:"#42a5f5" },
+  art:         { bg:"#2b0d1a", accent:"#ec407a" },
+};
+
+const VIDEO_TITLE_TEMPLATES = {
+  gaming:      ["Let's Play Everything","Gaming Marathon","Epic Moments","Speed Run Challenge","Game Review"],
+  science:     ["Lab Experiment","Discovery Hour","Science Breakdown","Research Update","Theory Time"],
+  government:  ["Policy Analysis","Political Deep Dive","Civics 101","Breaking News","Interview Series"],
+  humor:       ["Comedy Sketches","Fails Compilation","Prank Video","Stand-up Special","Reaction Reel"],
+  theoretical: ["Thought Experiment","What If...","Philosophy Hour","Deep Thoughts","Mind Bending"],
+  cooking:     ["Recipe Tutorial","Kitchen Disaster","Restaurant Review","Cook-Off Challenge","Taste Test"],
+  finance:     ["Market Update","Investment Guide","Budget Tips","Crypto Watch","Wealth Secrets"],
+  fitness:     ["Workout Routine","Diet Review","Transformation","Challenge Complete","Training Session"],
+  technology:  ["Tech Review","Unboxing","Coding Tutorial","App Comparison","Future Tech"],
+  art:         ["Art Tutorial","Speed Paint","Gallery Tour","Commission Reveal","Art Challenge"],
+};
+
 // ---- Avatar config (expandable later) ----------------------
 const AVATAR_CONFIG = {
   skinTones:  [
@@ -92,6 +145,14 @@ const PERSONA_FIT = {
 // ---- Game state --------------------------------------------
 let state = null;    // populated by new game or load
 let tempAvatar = {}; // used by avatar editor
+
+let playerState = {
+  playing: false,
+  progress: 0,      // 0.0 – 1.0
+  duration: 45,     // seconds for one full animation cycle
+  lastTick: null,
+  rafId: null,
+};
 
 // ---- Boot --------------------------------------------------
 document.addEventListener("DOMContentLoaded", () => {
@@ -189,6 +250,8 @@ function initUI() {
   document.getElementById("btn-avatar-cancel").addEventListener("click", () => {
     closeModal("avatar-modal");
   });
+
+  initVideoPlayer();
 }
 
 // ---- Setup screen ------------------------------------------
@@ -245,6 +308,7 @@ function startNewGame() {
     prestigeMultiplier: 1.0,
     activeEvents: [],
     monetized: false,
+    surpassedCreators: [],
   };
 
   closeScreen("setup-screen");
@@ -272,6 +336,9 @@ function renderGameScreen() {
   renderShop();
   updateOnCameraHint();
   updateAdSpendMax();
+  updatePlayButton(state.channel.subscribers);
+  renderCreatorLeaderboard();
+  drawPlayerCanvas();
 }
 
 function updateOnCameraHint() {
@@ -340,6 +407,7 @@ function doNextWeek() {
 
   // --- Simulate turn (JS reimplementation of Python logic) ---
   const result = simulateTurn(state, { freq, length, quality, adSpend, selfIn });
+  const prevSubs = state.channel.subscribers;
 
   // Apply results to state
   state.channel.subscribers   = Math.max(0, state.channel.subscribers + result.newSubs);
@@ -360,6 +428,12 @@ function doNextWeek() {
 
   // Milestone check
   checkMilestones(result);
+
+  // Creator surpass check
+  checkCreatorSurpass(prevSubs, state.channel.subscribers);
+
+  // Update video title for this week
+  updateVideoTitle();
 
   // Render weekly log
   renderWeeklyLog(result);
@@ -698,6 +772,7 @@ function doPrestige() {
   state.week = 1;
   state.activeEvents = [];
   state.monetized = false;
+  state.surpassedCreators = [];
 
   closeScreen("prestige-screen");
   showScreen("game-screen");
@@ -870,7 +945,7 @@ function fillPixelRect(ctx, x, y, w, h, s) {
 // ---- Save / Load -------------------------------------------
 function serializeState(state) {
   return {
-    version: "0.1.0",  // FUTURE AI: increment patch on every release, minor on new features, major on breaking save schema changes
+    version: "0.1.1",  // FUTURE AI: increment patch on every release, minor on new features, major on breaking save schema changes
     player: {
       name: state.player.name,
       niche: state.player.niche,
@@ -893,6 +968,7 @@ function serializeState(state) {
     prestigeCount: state.prestigeCount,
     prestigeMultiplier: state.prestigeMultiplier,
     monetized: state.monetized,
+    surpassedCreators: state.surpassedCreators || [],
   };
 }
 
@@ -909,6 +985,7 @@ function loadState(jsonStr) {
       prestigeCount: data.prestigeCount,
       prestigeMultiplier: data.prestigeMultiplier,
       monetized: data.monetized || false,
+      surpassedCreators: data.surpassedCreators || [],
       activeEvents: [],
     };
   } catch (e) { return null; }
@@ -945,4 +1022,225 @@ function roundRect(ctx, x, y, w, h, r) {
   ctx.lineTo(x, y + r);
   ctx.quadraticCurveTo(x, y, x + r, y);
   ctx.closePath();
+}
+
+// ============================================================
+// VIDEO PLAYER
+// ============================================================
+
+function initVideoPlayer() {
+  const btn = document.getElementById("play-pause-btn");
+  if (!btn) return;
+  btn.addEventListener("click", togglePlayPause);
+
+  document.getElementById("vol-slider")?.addEventListener("input", updateVolIcon);
+
+  document.querySelector(".player-progress-track")?.addEventListener("click", (e) => {
+    const pct = e.offsetX / e.currentTarget.clientWidth;
+    playerState.progress = Math.max(0, Math.min(1, pct));
+    updateProgressUI();
+    drawPlayerCanvas();
+  });
+
+  drawPlayerCanvas();
+}
+
+function togglePlayPause() {
+  playerState.playing = !playerState.playing;
+  const btn = document.getElementById("play-pause-btn");
+  if (btn) btn.textContent = playerState.playing ? "⏸" : "▶";
+
+  if (playerState.playing) {
+    playerState.lastTick = performance.now();
+    playerState.rafId = requestAnimationFrame(tickPlayer);
+  } else {
+    cancelAnimationFrame(playerState.rafId);
+  }
+  drawPlayerCanvas();
+}
+
+function tickPlayer(timestamp) {
+  if (!playerState.playing) return;
+  const elapsed = (timestamp - playerState.lastTick) / 1000;
+  playerState.lastTick = timestamp;
+  playerState.progress += elapsed / playerState.duration;
+  if (playerState.progress >= 1) playerState.progress = 0;
+  updateProgressUI();
+  drawPlayerCanvas();
+  playerState.rafId = requestAnimationFrame(tickPlayer);
+}
+
+function updateProgressUI() {
+  const fill = document.getElementById("player-progress");
+  if (fill) fill.style.width = (playerState.progress * 100).toFixed(2) + "%";
+
+  const cur = Math.floor(playerState.progress * playerState.duration);
+  const el  = document.getElementById("player-cur");
+  if (el) el.textContent = Math.floor(cur / 60) + ":" + String(cur % 60).padStart(2, "0");
+}
+
+function updateVolIcon() {
+  const val  = parseInt(document.getElementById("vol-slider")?.value || 80);
+  const icon = document.getElementById("vol-icon");
+  if (!icon) return;
+  icon.textContent = val === 0 ? "🔇" : val < 40 ? "🔉" : "🔊";
+}
+
+function updateVideoTitle() {
+  const el = document.getElementById("player-video-title");
+  if (!el || !state) return;
+  const niche  = state.player.niche;
+  const week   = state.week;
+  const list   = VIDEO_TITLE_TEMPLATES[niche] || VIDEO_TITLE_TEMPLATES.gaming;
+  el.textContent = list[week % list.length] + " #" + week;
+}
+
+function drawPlayerCanvas() {
+  const canvas = document.getElementById("player-canvas");
+  if (!canvas) return;
+
+  // Match CSS display width
+  if (canvas.clientWidth > 0) canvas.width = canvas.clientWidth;
+  const W = canvas.width;
+  const H = canvas.height;
+  const ctx = canvas.getContext("2d");
+
+  const niche  = state?.player?.niche || "gaming";
+  const colors = NICHE_COLORS[niche] || NICHE_COLORS.gaming;
+
+  // Background gradient
+  const grad = ctx.createLinearGradient(0, 0, W, H);
+  grad.addColorStop(0, colors.bg);
+  grad.addColorStop(1, colors.bg + "cc");
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+
+  // Scanlines when playing (subtle movement effect)
+  if (playerState.playing) {
+    const offset = (playerState.progress * playerState.duration * 60 | 0) % 4;
+    ctx.fillStyle = "rgba(0,0,0,0.07)";
+    for (let y = offset; y < H; y += 4) ctx.fillRect(0, y, W, 1);
+  }
+
+  // Large faint niche icon (background watermark)
+  const nInfo = NICHE_INFO[niche] || { icon:"📺" };
+  ctx.globalAlpha = 0.12;
+  ctx.font = `${H * 0.55}px sans-serif`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillStyle = colors.accent;
+  ctx.fillText(nInfo.icon, W / 2, H / 2);
+  ctx.globalAlpha = 1;
+
+  // Channel name
+  const name = state?.player?.name || "Your Channel";
+  ctx.font = `bold ${Math.min(17, H * 0.11)}px ${getComputedStyle(document.body).fontFamily}`;
+  ctx.fillStyle = "#fff";
+  ctx.shadowColor = "rgba(0,0,0,0.9)";
+  ctx.shadowBlur = 6;
+  ctx.fillText(name, W / 2, H * 0.42);
+
+  // Sub count
+  const subsText = state ? formatNum(state.channel.subscribers) + " subscribers" : "0 subscribers";
+  ctx.font = `${Math.min(11, H * 0.075)}px ${getComputedStyle(document.body).fontFamily}`;
+  ctx.fillStyle = "rgba(255,255,255,0.65)";
+  ctx.shadowBlur = 0;
+  ctx.fillText(subsText, W / 2, H * 0.58);
+
+  // REC dot (top-right, pulsing)
+  if (playerState.playing) {
+    const pulse = Math.sin(performance.now() / 500) > 0;
+    ctx.fillStyle = pulse ? "#ff3333" : "#991111";
+    ctx.beginPath();
+    ctx.arc(W - 16, 14, 5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "rgba(255,255,255,0.85)";
+    ctx.font = "bold 9px sans-serif";
+    ctx.textAlign = "right";
+    ctx.shadowBlur = 0;
+    ctx.fillText("REC", W - 24, 18);
+  }
+
+  // Paused overlay
+  if (!playerState.playing && playerState.progress > 0) {
+    ctx.fillStyle = "rgba(0,0,0,0.45)";
+    ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = "rgba(255,255,255,0.85)";
+    ctx.font = `${H * 0.3}px sans-serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("⏸", W / 2, H / 2);
+  }
+
+  ctx.textAlign = "left";
+  ctx.textBaseline = "alphabetic";
+  ctx.shadowBlur = 0;
+}
+
+// ============================================================
+// PLAY BUTTON TIER
+// ============================================================
+
+function updatePlayButton(subs) {
+  const btn = document.getElementById("play-pause-btn");
+  if (!btn) return;
+  const match = PLAY_BTN_TIERS.find(t => subs >= t.threshold) || PLAY_BTN_TIERS[PLAY_BTN_TIERS.length - 1];
+  for (let i = 0; i <= 7; i++) btn.classList.remove("tier-" + i);
+  btn.classList.add("tier-" + match.tier);
+  btn.title = match.title + " Play Button";
+}
+
+// ============================================================
+// CREATOR LEADERBOARD
+// ============================================================
+
+function renderCreatorLeaderboard() {
+  const list = document.getElementById("rivals-list");
+  if (!list) return;
+  list.innerHTML = "";
+
+  const subs = state?.channel?.subscribers || 0;
+
+  FAMOUS_CREATORS.forEach(creator => {
+    const surpassed = subs >= creator.subs;
+    const pct = Math.min(100, (subs / creator.subs) * 100);
+
+    const row = document.createElement("div");
+    row.className = "rival-row" + (surpassed ? " surpassed" : "");
+    row.innerHTML = `
+      <div class="rival-info">
+        <span class="rival-icon">${creator.icon}</span>
+        <span class="rival-name">${creator.name}</span>
+        <span class="rival-subs">${formatNum(creator.subs)}</span>
+        ${surpassed ? '<span class="rival-check">✓</span>' : ""}
+      </div>
+      <div class="rival-progress">
+        <div class="rival-progress-fill${surpassed ? " done" : ""}" style="width:${pct.toFixed(1)}%"></div>
+      </div>
+    `;
+    list.appendChild(row);
+  });
+}
+
+function checkCreatorSurpass(prevSubs, newSubs) {
+  if (!state) return;
+  state.surpassedCreators = state.surpassedCreators || [];
+
+  FAMOUS_CREATORS.forEach(creator => {
+    if (prevSubs < creator.subs && newSubs >= creator.subs &&
+        !state.surpassedCreators.includes(creator.name)) {
+      state.surpassedCreators.push(creator.name);
+      showCreatorSurpassToast(creator);
+    }
+  });
+}
+
+function showCreatorSurpassToast(creator) {
+  const area = document.getElementById("milestone-area");
+  if (!area) return;
+  const toast = document.createElement("div");
+  toast.className = "milestone-toast creator-surpass-toast";
+  toast.innerHTML = `${creator.icon} You just surpassed <strong>${creator.name}</strong> (${formatNum(creator.subs)} subs)!`;
+  area.appendChild(toast);
+  setTimeout(() => toast.remove(), 6000);
 }

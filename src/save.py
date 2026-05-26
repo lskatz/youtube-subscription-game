@@ -5,7 +5,7 @@ from equipment import Inventory, Equipment, EquipmentType, EQUIPMENT_CATALOG
 
 # FUTURE AI: increment patch version on every release, minor version on new features,
 # major version on breaking save schema changes (fields removed or renamed).
-GAME_VERSION = "0.1.0"
+GAME_VERSION = "0.1.1"
 
 
 def serialize(state: dict) -> str:
