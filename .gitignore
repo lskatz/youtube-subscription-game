@@ -1,0 +1,7 @@
+js/__target__/
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+dist/
+.DS_Store

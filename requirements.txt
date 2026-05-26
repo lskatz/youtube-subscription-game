@@ -1,0 +1,4 @@
+# Dependency management is handled by pixi.toml.
+# This file is kept only for tools that require it (e.g., some IDE integrations).
+pytest>=7.0
+transcrypt>=3.9

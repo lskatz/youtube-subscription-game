@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SubRush — YouTube Subscription Game</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<!-- ===== SAVE DIALOG (shown on load) ===== -->
+<div id="save-dialog" class="modal-overlay">
+  <div class="modal">
+    <h2>SubRush</h2>
+    <p id="save-dialog-msg">Welcome back! Continue your channel?</p>
+    <div id="save-dialog-buttons">
+      <button id="btn-continue" class="btn btn-primary">Continue</button>
+      <button id="btn-new-game" class="btn btn-secondary">New Game</button>
+      <button id="btn-delete-save" class="btn btn-danger">Delete Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SETUP SCREEN ===== -->
+<div id="setup-screen" class="screen hidden">
+  <div class="setup-container">
+    <h1>Create Your Channel</h1>
+
+    <div class="setup-section">
+      <label>Channel Name</label>
+      <input type="text" id="input-name" maxlength="40" placeholder="e.g. TurboGamer99" />
+    </div>
+
+    <div class="setup-section">
+      <label>Niche</label>
+      <div id="niche-grid" class="choice-grid"></div>
+    </div>
+
+    <div class="setup-section">
+      <label>Personality</label>
+      <div id="personality-grid" class="choice-grid"></div>
+    </div>
+
+    <div class="setup-section">
+      <label>Your Avatar</label>
+      <div class="avatar-setup-row">
+        <canvas id="avatar-preview" width="80" height="80"></canvas>
+        <button class="btn btn-secondary" id="btn-open-avatar">Customize</button>
+      </div>
+    </div>
+
+    <button class="btn btn-primary btn-large" id="btn-start">Launch Channel</button>
+  </div>
+</div>
+
+<!-- ===== MAIN GAME SCREEN ===== -->
+<div id="game-screen" class="screen hidden">
+
+  <!-- Header bar -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <canvas id="topbar-avatar" width="40" height="40"></canvas>
+      <span id="topbar-name" class="channel-name">Channel Name</span>
+    </div>
+    <div class="topbar-stats">
+      <div class="stat-chip" id="chip-subs">
+        <span class="stat-icon">👥</span>
+        <span id="stat-subs">0</span>
+      </div>
+      <div class="stat-chip" id="chip-budget">
+        <span class="stat-icon">💰</span>
+        <span id="stat-budget">$500</span>
+      </div>
+      <div class="stat-chip" id="chip-week">
+        <span class="stat-icon">📅</span>
+        Week <span id="stat-week">1</span>
+      </div>
+      <div class="stat-chip" id="chip-prestige" class="hidden">
+        <span class="stat-icon">⭐</span>
+        Prestige <span id="stat-prestige">0</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Monetization banner -->
+  <div id="monetization-banner" class="banner hidden">
+    🎉 Channel Monetized! You're now earning ad revenue.
+  </div>
+
+  <!-- Main layout -->
+  <main class="game-layout">
+
+    <!-- LEFT: Decisions panel -->
+    <section class="panel panel-decisions">
+      <h3>This Week's Decisions</h3>
+
+      <div class="decision-group">
+        <label>Uploads per week</label>
+        <div class="stepper">
+          <button class="step-btn" id="freq-down">−</button>
+          <span id="freq-val">3</span>
+          <button class="step-btn" id="freq-up">+</button>
+        </div>
+      </div>
+
+      <div class="decision-group">
+        <label>Video length</label>
+        <div class="choice-row" id="length-choice">
+          <button class="choice-btn active" data-val="short">Short <span class="hint">~8 min</span></button>
+          <button class="choice-btn" data-val="medium">Medium <span class="hint">~18 min</span></button>
+          <button class="choice-btn" data-val="long">Long <span class="hint">~35 min</span></button>
+        </div>
+      </div>
+
+      <div class="decision-group">
+        <label>Video quality</label>
+        <div class="choice-row" id="quality-choice">
+          <button class="choice-btn" data-val="low">Low</button>
+          <button class="choice-btn active" data-val="medium">Medium</button>
+          <button class="choice-btn" data-val="high">High</button>
+        </div>
+      </div>
+
+      <div class="decision-group">
+        <label>Ad spend this week</label>
+        <div class="ad-spend-row">
+          <input type="range" id="ad-spend-slider" min="0" max="500" step="10" value="0" />
+          <span id="ad-spend-val">$0</span>
+        </div>
+      </div>
+
+      <div class="decision-group">
+        <label>Appear on camera?</label>
+        <label class="toggle">
+          <input type="checkbox" id="self-in-video" checked />
+          <span class="toggle-slider"></span>
+        </label>
+        <p class="hint" id="oncamera-hint">Persona match: checking...</p>
+      </div>
+
+      <button class="btn btn-primary btn-large" id="btn-next-week">Next Week →</button>
+    </section>
+
+    <!-- CENTER: Event log -->
+    <section class="panel panel-log">
+      <h3>Weekly Report</h3>
+      <div id="weekly-stats" class="weekly-stats hidden">
+        <div class="stat-row"><span>Views</span><span id="log-views">—</span></div>
+        <div class="stat-row"><span>New Subscribers</span><span id="log-subs">—</span></div>
+        <div class="stat-row"><span>Watch Time</span><span id="log-wt">—</span></div>
+        <div class="stat-row"><span>Revenue</span><span id="log-rev">—</span></div>
+      </div>
+      <div id="event-log" class="event-log">
+        <p class="log-placeholder">Your weekly results will appear here.</p>
+      </div>
+
+      <!-- Milestone toast area -->
+      <div id="milestone-area"></div>
+    </section>
+
+    <!-- RIGHT: Equipment shop -->
+    <section class="panel panel-shop">
+      <h3>Equipment Shop</h3>
+      <div id="shop-list" class="shop-list"></div>
+    </section>
+
+  </main>
+</div>
+
+<!-- ===== PRESTIGE SCREEN ===== -->
+<div id="prestige-screen" class="screen hidden">
+  <div class="prestige-container">
+    <h1>🏆 500 Million Subscribers!</h1>
+    <p>You've conquered the algorithm. Prestige and do it all again — faster.</p>
+    <div class="play-button-display">
+      <canvas id="play-button-canvas" width="200" height="200"></canvas>
+    </div>
+    <div class="play-button-controls">
+      <label>Button Color</label>
+      <input type="color" id="pb-color" value="#C0C0C0" />
+      <label>Icon</label>
+      <select id="pb-icon">
+        <option value="play">▶ Play</option>
+        <option value="star">★ Star</option>
+        <option value="crown">♛ Crown</option>
+        <option value="lightning">⚡ Lightning</option>
+      </select>
+    </div>
+    <div class="prestige-bonuses">
+      <p>Next run bonus: <strong id="prestige-bonus-val">+10% growth multiplier</strong></p>
+    </div>
+    <button class="btn btn-primary btn-large" id="btn-prestige">Prestige &amp; Continue</button>
+  </div>
+</div>
+
+<!-- ===== AVATAR CUSTOMIZER MODAL ===== -->
+<div id="avatar-modal" class="modal-overlay hidden">
+  <div class="modal modal-wide">
+    <h2>Customize Avatar</h2>
+    <div class="avatar-editor">
+      <canvas id="avatar-editor-canvas" width="120" height="120"></canvas>
+      <div class="avatar-options">
+        <div class="avatar-option-group" id="opt-skin">
+          <label>Skin Tone</label>
+          <div class="swatch-row"></div>
+        </div>
+        <div class="avatar-option-group" id="opt-hair-style">
+          <label>Hair Style</label>
+          <div class="swatch-row"></div>
+        </div>
+        <div class="avatar-option-group" id="opt-hair-color">
+          <label>Hair Color</label>
+          <div class="swatch-row"></div>
+        </div>
+        <div class="avatar-option-group" id="opt-outfit">
+          <label>Outfit</label>
+          <div class="swatch-row"></div>
+        </div>
+        <div class="avatar-option-group" id="opt-accessory">
+          <label>Accessory</label>
+          <div class="swatch-row"></div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-primary" id="btn-avatar-save">Save</button>
+      <button class="btn btn-secondary" id="btn-avatar-cancel">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/ui.js"></script>
+<!-- Transcrypt compiled game logic loaded by ui.js after it compiles paths -->
+</body>
+</html>
